@@ -39,13 +39,22 @@ object Job {
           .read
           .parquet(conf.inputPath)
 
-        // Split between training and test sets
-        val Array(training, test) = data.randomSplit(Array(0.9, 0.1))
-
         // Columns used as features
         val features:Array[String] = data
           .columns
           .filterNot(elem => elem == "koi_disposition" || elem == "rowid")
+
+        // Tranforming the labels (Strings) into numbers
+        val indexer = new StringIndexer()
+          .setInputCol("koi_disposition")
+          .setOutputCol("label")
+          .fit(data)
+
+        val data_ready = indexer.transform(data)
+
+
+        // Split between training and test sets
+        val Array(training, test) = data_ready.randomSplit(Array(0.9, 0.1))
 
         // Parameters used in the grid search
         val regGrid: Array[Double] = (-6.0 to 0.0 by 0.5).toArray
@@ -56,9 +65,7 @@ object Job {
         val assembler = new VectorAssembler()
           .setInputCols(features)
           .setOutputCol("features")
-        val indexer = new StringIndexer()
-          .setInputCol("koi_disposition")
-          .setOutputCol("label")
+
         val lr = new LogisticRegression()
           .setElasticNetParam(1.0) // L1-norm regularization : LASSO -> automatic feature selection
           .setFeaturesCol("features")
@@ -68,8 +75,13 @@ object Job {
           .setPredictionCol("prediction")
           .setTol(1.0e-5)
           .setMaxIter(300)
+
+
+        // Usually the transformations applied to the labels are not put in the Pipeline
+        // because when the resulting best model will be used on new data, the label column
+        // will not be present. So we do not put indexer in the pipeline.
         val pipeline = new Pipeline()
-          .setStages(Array(assembler, indexer, lr))
+          .setStages(Array(assembler, lr))
 
         // Create the grid search
         val grid = new ParamGridBuilder()
@@ -111,6 +123,8 @@ object Job {
         model.write.overwrite.save(conf.bestModelPath)
 
         println(s"Best model saved here: ${conf.bestModelPath}")
+
+        spark.stop()
     }
   }
 }
