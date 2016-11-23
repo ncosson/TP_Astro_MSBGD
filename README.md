@@ -19,7 +19,8 @@ Data on exoplanets is public and available online (check the [link](http://exopl
 A clean dataset is provided with this correction.
 
 ## About the classifier
-The classifier we use is a LASSO : it's a logistic regression
+We need a binary classifier (we have two classes of observations: validated, invalidated).
+We chose to use a logistic regression with a regularisation using the L1 norm of the vector defining the separating hyperplane between the two classes (LASSO).
 ([Link for the implementation with Spark Ml](http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.ml.classification.LogisticRegression)) method with L1 regularization.
 
 A grid search is also used to find the best regularization parameter to solve this particular problem.
@@ -41,3 +42,6 @@ sbt assembly
 -i /input/path/for/the/data \
 -m /path/for/the/saved/model
 ```
+
+Open localhost:4040 in your browser to follow the job in SparkUI.
+In chrome you can install an auto refresher plugin to update the page.
